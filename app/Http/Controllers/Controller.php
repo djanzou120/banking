@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\ResponseParser\Builder;
+use App\Models\Account;
+use App\Models\Customer;
+use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
@@ -28,9 +31,9 @@ use OpenApi\Annotations as OA;
  *     )
  * )
  * @OA\SecurityScheme(
- *   description="User token example Bearer <token-value>",
- *   securityScheme="Oauth2Password",
- *   type="oauth2",
+ *   description="User token example { Bearer <token-value> }",
+ *   securityScheme="bearer",
+ *   type="http",
  *   in="header",
  *   scheme="bearer",
  *   name="Authorization"
@@ -96,61 +99,5 @@ class Controller extends BaseController
         $builder->setData($data);
         $builder->setToken($token);
         return $isJsonResponse ? response()->json($builder->reply()) : $builder->reply();
-    }
-
-    /**
-     * @param $context
-     * @return string|null
-     */
-    public function genId($context)
-    {
-        switch ($context) {
-            case self::CUSTOMER:
-                return $this->getNext($context, new Order());
-            case self::ACCOUNT:
-                return $this->getNext($context, new Order());
-            case self::TRANSACTION:
-                return $this->getNext($context, new \App\Models\Transaction());
-            default:
-                return null;
-        }
-    }
-
-    /**
-     * @param $context
-     * @param Model $model
-     * @param bool $useSoftDelete
-     * @return string|null
-     */
-    private function getNext($context, Model $model, bool $useSoftDelete = false)
-    {
-        $format = '0000000000';
-        $id = array();
-        $final_id = null;
-        $step = 1;
-        $id['context'] = $context;
-        if ($useSoftDelete) {
-            $last_model = $model->withTrashed()->where('id', 'like', '%' . $context . '%')->orderByDesc("created_at")->first();
-        } else {
-            $last_model = $model->where('id', 'like', '%' . $context . '%')->orderByDesc("created_at")->first();
-        }
-        if (empty($last_model))
-            $last_id = '0';
-        else
-            $last_id = explode($context, $last_model->id)[1];
-
-        do {
-            $id['size'] = intval($last_id) + $step;
-            $id['size'] = substr($format, 0, strlen($format) - strlen($id['size'])) . $id['size'];
-            $final_id = join('', $id);
-            if ($useSoftDelete) {
-                $done = !empty($model->withTrashed()->find($final_id));
-            } else {
-                $done = !empty($model->find($final_id));
-            }
-            if ($done)
-                $step += 1;
-        } while ($done);
-        return $final_id;
     }
 }

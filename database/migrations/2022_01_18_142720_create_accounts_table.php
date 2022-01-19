@@ -14,8 +14,8 @@ class CreateAccountsTable extends Migration
     public function up()
     {
         Schema::create('accounts', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->string('customerId');
+            $table->increments('id');
+            $table->unsignedInteger('customerId');
             $table->foreign('customerId')->references('id')->on('customers')
                 ->onDelete('cascade')
                 ->onUpdate('cascade');

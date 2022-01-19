@@ -14,11 +14,11 @@ class CreateCustomersTable extends Migration
     public function up()
     {
         Schema::create('customers', function (Blueprint $table) {
-            $table->string('id')->primary();
+            $table->increments('id');
             $table->unsignedInteger('createdById');
-            $table->string('firstname');
-            $table->string('lastname')->nullable();
-            $table->string('phone');
+            $table->string('firstname', 120);
+            $table->string('lastname', 120)->nullable();
+            $table->string('phone', 14);
             $table->foreign('createdById')->references('id')->on('users')
                 ->onDelete('cascade')
                 ->onUpdate('cascade');

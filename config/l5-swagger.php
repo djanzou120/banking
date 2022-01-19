@@ -5,7 +5,7 @@ return [
     'documentations' => [
         'default' => [
             'api' => [
-                'title' => 'Fortuna Trading',
+                'title' => 'Banking App',
             ],
 
             'routes' => [

@@ -5,20 +5,20 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\Customer;
 use App\Models\Role;
-use App\Models\Transaction;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Http\Request;
 
-class AccountController extends Controller
+class CustomerController extends Controller
 {
+
     /**
      * @OA\Get(
-     *    path="/api/account",
-     *   tags={"Account"},
-     *   summary="Find all accounts",
+     *    path="/api/customer",
+     *   tags={"Customer"},
+     *   summary="Find all customers",
      *   description="",
-     *   operationId="allAccount",
+     *   operationId="allCustomer",
      *   @OA\Response(
      *     response=200,
      *     description="successful operation",
@@ -40,8 +40,8 @@ class AccountController extends Controller
     public function index()
     {
         try {
-            $accounts = Account::paginate(15);
-            return $this->liteResponse(config('code.request.SUCCESS'), $accounts, "Accounts list");
+            $customers = Customer::paginate(15);
+            return $this->liteResponse(config('code.request.SUCCESS'), $customers, "Customers list");
         }catch (\Exception $e){
             return $this->liteResponse(config('code.request.EXCEPTION'), null, $e->getMessage());
         }
@@ -49,13 +49,13 @@ class AccountController extends Controller
 
     /**
      * @OA\Get(
-     *    path="/api/account/{accountId}",
-     *   tags={"Account"},
-     *   summary="Search account by ID",
-     *   description="Search account by ID",
-     *   operationId="showAccount",
+     *    path="/api/customer/{customerId}",
+     *   tags={"Customer"},
+     *   summary="Search customer by ID",
+     *   description="Search customer by ID",
+     *   operationId="showCustomer",
      *   @OA\Parameter(
-     *     name="accountId",
+     *     name="customerId",
      *     required=true,
      *     in="path",
      *     @OA\Schema(
@@ -80,13 +80,13 @@ class AccountController extends Controller
      * @return JsonResponse
      * @throws \Exception
      */
-    public function show(Request $request, string $accountId)
+    public function show($customerId)
     {
         try {
-            $account = Account::find($accountId);
-            if (empty($account))
-                return $this->liteResponse(config('code.request.FAILURE'), null, "Account not found");
-            return $this->liteResponse(config('code.request.SUCCESS'), $account, "Account found");
+            $customer = Customer::find($customerId);
+            if (empty($customer))
+                return $this->liteResponse(config('code.request.FAILURE'), null, "Customer not found");
+            return $this->liteResponse(config('code.request.SUCCESS'), $customer, "Customer found");
         }catch (\Exception $e){
             return $this->liteResponse(config('code.request.EXCEPTION'), null, $e->getMessage());
         }
@@ -94,13 +94,13 @@ class AccountController extends Controller
 
     /**
      * @OA\Post(
-     *    path="/api/account",
-     *   tags={"Account"},
-     *   summary="Create a account",
-     *   description="Create a account",
-     *   operationId="createAccount",
+     *    path="/api/customer",
+     *   tags={"Customer"},
+     *   summary="Create a customer",
+     *   description="Create a customer",
+     *   operationId="createCustomer",
      *   @OA\Parameter(
-     *     name="customerId",
+     *     name="firstname",
      *     required=true,
      *     in="query",
      *     @OA\Schema(
@@ -108,8 +108,24 @@ class AccountController extends Controller
      *     )
      *   ),
      *   @OA\Parameter(
-     *     name="name",
+     *     name="lastname",
      *     required=false,
+     *     in="query",
+     *     @OA\Schema(
+     *         type="string"
+     *     )
+     *   ),
+     *   @OA\Parameter(
+     *     name="phone",
+     *     required=true,
+     *     in="query",
+     *     @OA\Schema(
+     *         type="string"
+     *     )
+     *   ),
+     *   @OA\Parameter(
+     *     name="initialAmount",
+     *     required=true,
      *     in="query",
      *     @OA\Schema(
      *         type="string"
@@ -136,16 +152,28 @@ class AccountController extends Controller
     public function store(Request $request)
     {
         try {
-            $input = $request->only((new Account())->getFillable());
+            $initialAmount = $request->input('initialAmount');
+            $input = $request->only((new Customer())->getFillable());
 
             $validator = $this->validator($input);
             if ($validator->fails())
                 return $this->liteResponse(config("code.request.VALIDATION_ERROR"),$validator->errors());
 
-            $account = Account::create($input);
-            if (!empty($account))
-                return $this->liteResponse(config('code.request.SUCCESS'), $account, "Account created with success.");
-            return $this->liteResponse(config('code.request.FAILURE'), null, "Account not created");
+            $input['createdById'] = Auth::user()->id;
+
+            $customer = Customer::create($input);
+
+            if (!empty($customer)){
+                $account = Account::create(['customerId' => $customer->id]);
+                if (!empty($account)){
+                    $transaction = (new TransactionController())->deposit($account->id, $initialAmount);
+                    if (!empty($transaction))
+                        return $this->liteResponse(config('code.request.SUCCESS'), ['customer' => $customer, 'transaction' => $transaction], "Customer created with success.");
+                    return $this->liteResponse(config('code.request.FAILURE'), null, "An error occured on initial deposit");
+                }
+                return $this->liteResponse(config('code.request.FAILURE'), null, "An error occured on account creation");
+            }
+            return $this->liteResponse(config('code.request.FAILURE'), $customer, "Customer not created");
         }catch (\Exception $e){
             return $this->liteResponse(config('code.request.EXCEPTION'), null, $e->getMessage());
         }
@@ -153,13 +181,13 @@ class AccountController extends Controller
 
     /**
      * @OA\Put(
-     *    path="/api/account/{accountId}",
-     *   tags={"Account"},
-     *   summary="Update a account",
-     *   description="Update a account by ID",
-     *   operationId="updateAccount",
+     *    path="/api/customer/{customerId}",
+     *   tags={"Customer"},
+     *   summary="Update a customer",
+     *   description="Update a customer by ID",
+     *   operationId="updateCustomer",
      *   @OA\Parameter(
-     *     name="customerId",
+     *     name="firstname",
      *     required=false,
      *     in="query",
      *     @OA\Schema(
@@ -167,7 +195,15 @@ class AccountController extends Controller
      *     )
      *   ),
      *   @OA\Parameter(
-     *     name="name",
+     *     name="lastname",
+     *     required=false,
+     *     in="query",
+     *     @OA\Schema(
+     *         type="string"
+     *     )
+     *   ),
+     *   @OA\Parameter(
+     *     name="phone",
      *     required=false,
      *     in="query",
      *     @OA\Schema(
@@ -192,24 +228,25 @@ class AccountController extends Controller
      * @return JsonResponse
      * @throws \Exception
      */
-    public function update(Request $request, $accountId)
+    public function update(Request $request, $customerId)
     {
         try {
-            $input = $request->only((new Account())->getFillable());
+            $input = $request->only((new Customer())->getFillable());
 
             $validator = Validator::make($input, [
-                'customerId' => 'bail|exists:customers,id',
-                'name' => 'bail|max:120'
+                'firstname' => 'bail|max:120',
+                'lastname' => 'bail|max:120',
+                'phone' => 'bail|min:9|max:14|unique:customers,phone',
             ]);
             if ($validator->fails())
                 return $this->liteResponse(config("code.request.VALIDATION_ERROR"),$validator->errors());
 
-            $account = Account::find($accountId);
-            if (empty($account))
-                return $this->liteResponse(config('code.request.FAILURE'), "Account not found");
+            $customer = Customer::find($customerId);
+            if (empty($customer))
+                return $this->liteResponse(config('code.request.FAILURE'), "Customer not found");
 
-            $account->update($input);
-            return $this->liteResponse(config('code.request.SUCCESS'), $account, "Account updated with success.");
+            $customer->update($input);
+            return $this->liteResponse(config('code.request.SUCCESS'), $customer, "Customer updated with success.");
         }catch (\Exception $e){
             return $this->liteResponse(config('code.request.EXCEPTION'), null, $e->getMessage());
         }
@@ -217,11 +254,11 @@ class AccountController extends Controller
 
     /**
      * @OA\Delete (
-     *    path="/api/account/{accountId}",
-     *   tags={"Account"},
-     *   summary="Delete a account",
-     *   description="Delete a account by ID",
-     *   operationId="deleteAccount",
+     *    path="/api/customer/{customerId}",
+     *   tags={"Customer"},
+     *   summary="Delete a customer",
+     *   description="Delete a customer by ID",
+     *   operationId="deleteCustomer",
      *   @OA\Parameter(
      *     name="customerId",
      *     required=true,
@@ -248,17 +285,17 @@ class AccountController extends Controller
      * @return JsonResponse
      * @throws \Exception
      */
-    public function delete($accountId)
+    public function delete($customerId)
     {
         try {
             if (!Auth::user()->isAuthorized(Role::ROOT))
                 return $this->liteResponse(config('code.request.NOT_AUTHORIZED'));
 
-            $account = Account::find($accountId);
-            if (empty($account))
-                return $this->liteResponse(config('code.request.FAILURE'), null, "Account not found.");
-            $account->delete();
-            return $this->liteResponse(config('code.request.SUCCESS'), null, "Account deleted with success.");
+            $customer = Customer::find($customerId);
+            if (empty($customer))
+                return $this->liteResponse(config('code.request.FAILURE'), null, "Customer not found.");
+            $customer->delete();
+            return $this->liteResponse(config('code.request.SUCCESS'), null, "Customer deleted with success.");
         }catch (\Exception $e){
             return $this->liteResponse(config('code.request.EXCEPTION'), null, $e->getMessage());
         }
@@ -266,13 +303,13 @@ class AccountController extends Controller
 
     /**
      * @OA\Get(
-     *    path="/api/account/sold/{accountId}",
-     *   tags={"Account"},
-     *   summary="Sold of account by ID",
-     *   description="Sold of  account by ID",
-     *   operationId="soldAccount",
+     *    path="/api/customer/sold/{customerId}",
+     *   tags={"Customer"},
+     *   summary="Sold of customer by ID",
+     *   description="Sold of  customer by ID",
+     *   operationId="soldCustomer",
      *   @OA\Parameter(
-     *     name="accountId",
+     *     name="customerId",
      *     required=true,
      *     in="path",
      *     @OA\Schema(
@@ -297,11 +334,11 @@ class AccountController extends Controller
      * @return JsonResponse
      * @throws \Exception
      */
-    public function getSold($accountId)
+    public function getSold($customerId)
     {
         try {
-            $account = (new Account())->getSold($accountId);
-            return $this->liteResponse(config('code.request.SUCCESS'), $account);
+            $customer = (new Account())->getCustomerSold($customerId);
+            return $this->liteResponse(config('code.request.SUCCESS'), $customer);
         }catch (\Exception $e){
             return $this->liteResponse(config('code.request.EXCEPTION'), null, $e->getMessage());
         }
@@ -309,13 +346,13 @@ class AccountController extends Controller
 
     /**
      * @OA\Get(
-     *    path="/api/account/story/{accountId}",
-     *   tags={"Account"},
-     *   summary="Story of account by ID",
-     *   description="Story of  account by ID",
-     *   operationId="StoryAccount",
+     *    path="/api/customer/subsold/{customerId}",
+     *   tags={"Customer"},
+     *   summary="Subsold of customer by ID",
+     *   description="Subsold of  customer by ID",
+     *   operationId="subSoldCustomer",
      *   @OA\Parameter(
-     *     name="accountId",
+     *     name="customerId",
      *     required=true,
      *     in="path",
      *     @OA\Schema(
@@ -340,11 +377,11 @@ class AccountController extends Controller
      * @return JsonResponse
      * @throws \Exception
      */
-    public function story($accountId)
+    public function getSubSold($customerId)
     {
         try {
-            $stories = Transaction::where('accountId', '=', $accountId)->get();
-            return $this->liteResponse(config('code.request.SUCCESS'), $stories);
+            $customer = (new Account())->getCustomerSubSold($customerId);
+            return $this->liteResponse(config('code.request.SUCCESS'), $customer);
         }catch (\Exception $e){
             return $this->liteResponse(config('code.request.EXCEPTION'), null, $e->getMessage());
         }
@@ -353,8 +390,9 @@ class AccountController extends Controller
     protected function validator(&$data)
     {
         return Validator::make($data, [
-            'customerId' => 'bail|required|exists:customers,id',
-            'name' => 'bail|max:120'
+            'firstname' => 'bail|required|max:120',
+            'lastname' => 'bail|max:120',
+            'phone' => 'bail|required|min:9|max:14|unique:customers,phone',
         ]);
     }
 }

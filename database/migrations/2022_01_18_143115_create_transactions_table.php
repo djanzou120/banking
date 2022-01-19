@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use App\Http\Controllers\Controller;
 
 class CreateTransactionsTable extends Migration
 {
@@ -14,20 +15,26 @@ class CreateTransactionsTable extends Migration
     public function up()
     {
         Schema::create('transactions', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->string('accountId');
-            $table->string('recipientId')->nullable();
-            $table->unsignedInteger('statusId');
+            $table->increments('id');
+            $table->unsignedInteger('depositAgentId')->nullable();
+            $table->unsignedInteger('accountId');
+            $table->unsignedInteger('recipientId')->nullable();
+            $table->unsignedInteger('fromId')->nullable();
+            $table->enum('type', ['DEPOSIT', 'SEND', 'RECEIVE']);
+            $table->enum('status', ['INIT', 'SUCCESS']);
+            $table->float('amount');
+            $table->foreign('depositAgentId')->references('id')->on('users')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
             $table->foreign('accountId')->references('id')->on('accounts')
                 ->onDelete('cascade')
                 ->onUpdate('cascade');
             $table->foreign('recipientId')->references('id')->on('accounts')
                 ->onDelete('cascade')
                 ->onUpdate('cascade');
-            $table->foreign('statusId')->references('id')->on('status')
+            $table->foreign('fromId')->references('id')->on('accounts')
                 ->onDelete('cascade')
                 ->onUpdate('cascade');
-            $table->string('name', 120)->default("Default name");
             $table->timestamps();
             $table->softDeletes();
         });
