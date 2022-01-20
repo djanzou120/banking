@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -70,6 +71,11 @@ class TransactionController extends Controller
             ]);
             if ($validator->fails())
                 return $this->liteResponse(config("code.request.VALIDATION_ERROR"),$validator->errors());
+
+            // Check sold
+            $senderSold = (new Account())->getSold($input['accountIdSender'])->sold;
+            if ($senderSold < $input['amount'])
+                return $this->liteResponse(config('code.request.FAILURE'), null, 'Insufficient sold');
 
             $transaction = $this->send($input['accountIdSender'], $input['accountIdRecipient'], $input['amount']);
             if (!empty($transaction))

@@ -7,4 +7,6 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
+
+    public const Authorization = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9sb2NhbGhvc3RcL2FwaVwvYXV0aFwvbG9naW4iLCJpYXQiOjE2NDI2OTE2OTAsImV4cCI6MTY0MjcwMjQ5MCwibmJmIjoxNjQyNjkxNjkwLCJqdGkiOiJFRzE1YksxRmYwZjBvVUNaIiwic3ViIjoxLCJwcnYiOiIyM2JkNWM4OTQ5ZjYwMGFkYjM5ZTcwMWM0MDA4NzJkYjdhNTk3NmY3In0.mbndyvgg5jcT6dPxt1LRfk26aKo4bM_tMmIokIp46GE";
 }
